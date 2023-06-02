@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './MainView.scss';
 import { TextButton } from '../Common/TextButton/TextButton';
 import classNames from 'classnames';
@@ -87,6 +87,23 @@ const MainView: React.FC = () => {
             </div>;
         });
     };
+    
+    // This will run one time after the component mounts
+    useEffect(() => {
+        const onPageLoad = () => {
+            {startProject()}
+        };
+        
+        // Check if the page has already loaded
+        if (document.readyState === 'complete') {
+            onPageLoad();
+        } else {
+            window.addEventListener('load', onPageLoad);
+            // Remove the event listener when component unmounts
+            return () => window.removeEventListener('load', onPageLoad);
+        }
+    }, []);
+
 
     return (
         <div className={getClassName()}>
