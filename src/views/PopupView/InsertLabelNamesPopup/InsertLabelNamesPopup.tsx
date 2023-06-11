@@ -218,7 +218,7 @@ const InsertLabelNamesPopup: React.FC<IProps> = (
                     </Scrollbars> :
                         <div
                             className='EmptyList'
-                            onClick={addLabelNameCallback}
+                            onLoad={addLabelNameCallback}
                         >
                             <img
                                 draggable={false}
