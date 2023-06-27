@@ -1,33 +1,33 @@
 import React from 'react';
 import './Editor.scss';
-import {ISize} from '../../../interfaces/ISize';
-import {ImageData, LabelPoint, LabelRect} from '../../../store/labels/types';
-import {FileUtil} from '../../../utils/FileUtil';
-import {AppState} from '../../../store';
-import {connect} from 'react-redux';
-import {updateImageDataById} from '../../../store/labels/actionCreators';
-import {ImageRepository} from '../../../logic/imageRepository/ImageRepository';
-import {LabelType} from '../../../data/enums/LabelType';
-import {PopupWindowType} from '../../../data/enums/PopupWindowType';
-import {CanvasUtil} from '../../../utils/CanvasUtil';
-import {CustomCursorStyle} from '../../../data/enums/CustomCursorStyle';
-import {ImageLoadManager} from '../../../logic/imageRepository/ImageLoadManager';
-import {EventType} from '../../../data/enums/EventType';
-import {EditorData} from '../../../data/EditorData';
-import {EditorModel} from '../../../staticModels/EditorModel';
-import {EditorActions} from '../../../logic/actions/EditorActions';
-import {EditorUtil} from '../../../utils/EditorUtil';
-import {ContextManager} from '../../../logic/context/ContextManager';
-import {ContextType} from '../../../data/enums/ContextType';
+import { ISize } from '../../../interfaces/ISize';
+import { FileType, ImageData, LabelPoint, LabelRect } from '../../../store/labels/types';
+import { FileUtil } from '../../../utils/FileUtil';
+import { AppState } from '../../../store';
+import { connect } from 'react-redux';
+import { updateImageDataById } from '../../../store/labels/actionCreators';
+import { ImageRepository } from '../../../logic/imageRepository/ImageRepository';
+import { LabelType } from '../../../data/enums/LabelType';
+import { PopupWindowType } from '../../../data/enums/PopupWindowType';
+import { CanvasUtil } from '../../../utils/CanvasUtil';
+import { CustomCursorStyle } from '../../../data/enums/CustomCursorStyle';
+import { ImageLoadManager } from '../../../logic/imageRepository/ImageLoadManager';
+import { EventType } from '../../../data/enums/EventType';
+import { EditorData } from '../../../data/EditorData';
+import { EditorModel } from '../../../staticModels/EditorModel';
+import { EditorActions } from '../../../logic/actions/EditorActions';
+import { EditorUtil } from '../../../utils/EditorUtil';
+import { ContextManager } from '../../../logic/context/ContextManager';
+import { ContextType } from '../../../data/enums/ContextType';
 import Scrollbars from 'react-custom-scrollbars-2';
-import {ViewPortActions} from '../../../logic/actions/ViewPortActions';
-import {PlatformModel} from '../../../staticModels/PlatformModel';
+import { ViewPortActions } from '../../../logic/actions/ViewPortActions';
+import { PlatformModel } from '../../../staticModels/PlatformModel';
 import LabelControlPanel from '../LabelControlPanel/LabelControlPanel';
-import {IPoint} from '../../../interfaces/IPoint';
-import {RenderEngineUtil} from '../../../utils/RenderEngineUtil';
-import {LabelStatus} from '../../../data/enums/LabelStatus';
-import {isEqual} from 'lodash';
-import {AIActions} from '../../../logic/actions/AIActions';
+import { IPoint } from '../../../interfaces/IPoint';
+import { RenderEngineUtil } from '../../../utils/RenderEngineUtil';
+import { LabelStatus } from '../../../data/enums/LabelStatus';
+import { isEqual } from 'lodash';
+import { AIActions } from '../../../logic/actions/AIActions';
 
 interface IProps {
     size: ISize;
@@ -64,12 +64,19 @@ class Editor extends React.Component<IProps, IState> {
     public componentDidMount(): void {
         this.mountEventListeners();
 
-        const {imageData, activeLabelType} = this.props;
+        const { imageData, activeLabelType } = this.props;
 
-        ContextManager.switchCtx(ContextType.EDITOR);
-        EditorActions.mountRenderEnginesAndHelpers(activeLabelType);
-        ImageLoadManager.addAndRun(this.loadImage(imageData));
-        ViewPortActions.resizeCanvas(this.props.size);
+        if (imageData.fileType === FileType.IMAGE) {
+            ContextManager.switchCtx(ContextType.EDITOR);
+            EditorActions.mountRenderEnginesAndHelpers(activeLabelType);
+            ImageLoadManager.addAndRun(this.loadImage(imageData));
+            ViewPortActions.resizeCanvas(this.props.size);
+        } else {
+            ContextManager.switchCtx(ContextType.EDITOR);
+            EditorActions.mountRenderEnginesAndHelpersForVideo();
+            ImageLoadManager.addAndRun(this.loadImage(imageData));
+            ViewPortActions.resizeCanvas(this.props.size);
+        }
     }
 
     public componentWillUnmount(): void {
@@ -77,16 +84,21 @@ class Editor extends React.Component<IProps, IState> {
     }
 
     public componentDidUpdate(prevProps: Readonly<IProps>, prevState: Readonly<{}>, snapshot?: any): void {
-        const {imageData, activeLabelType} = this.props;
+        const { imageData, activeLabelType } = this.props;
 
-        prevProps.imageData.id !== imageData.id && ImageLoadManager.addAndRun(this.loadImage(imageData));
+        if (imageData.fileType === FileType.IMAGE) {
+            prevProps.imageData.id !== imageData.id && ImageLoadManager.addAndRun(this.loadImage(imageData));
 
-        if (prevProps.activeLabelType !== activeLabelType) {
-            EditorActions.swapSupportRenderingEngine(activeLabelType);
-            AIActions.detect(imageData.id, ImageRepository.getById(imageData.id));
+            if (prevProps.activeLabelType !== activeLabelType) {
+                EditorActions.swapSupportRenderingEngine(activeLabelType);
+                AIActions.detect(imageData.id, ImageRepository.getById(imageData.id));
+            }
+
+            this.updateModelAndRender();
+        } else {
+            // put some logic
         }
 
-        this.updateModelAndRender();
     }
 
     // =================================================================================================================
@@ -122,7 +134,24 @@ class Editor extends React.Component<IProps, IState> {
                 EditorActions.setLoadingStatus(true);
                 const saveLoadedImagePartial = (image: HTMLImageElement) => this.saveLoadedImage(image, imageData);
                 FileUtil.loadImage(imageData.fileData)
-                    .then((image:HTMLImageElement) => saveLoadedImagePartial(image))
+                    .then((image: HTMLImageElement) => saveLoadedImagePartial(image))
+                    .catch((error) => this.handleLoadImageError())
+            }
+        }
+    };
+
+    private loadVideo = async (imageData: ImageData): Promise<any> => {
+        if (imageData.loadStatus) {
+            EditorActions.setActiveImage(ImageRepository.getById(imageData.id));
+            AIActions.detect(imageData.id, ImageRepository.getById(imageData.id));
+            this.updateModelAndRender()
+        }
+        else {
+            if (!EditorModel.isLoading) {
+                EditorActions.setLoadingStatus(true);
+                const saveLoadedImagePartial = (image: HTMLImageElement) => this.saveLoadedImage(image, imageData);
+                FileUtil.loadImage(imageData.fileData)
+                    .then((image: HTMLImageElement) => saveLoadedImagePartial(image))
                     .catch((error) => this.handleLoadImageError())
             }
         }
@@ -138,7 +167,7 @@ class Editor extends React.Component<IProps, IState> {
         this.updateModelAndRender()
     };
 
-    private handleLoadImageError = () => {};
+    private handleLoadImageError = () => { };
 
     // =================================================================================================================
     // HELPER METHODS
@@ -185,7 +214,7 @@ class Editor extends React.Component<IProps, IState> {
             return this.props.imageData.labelRects
                 .filter((labelRect: LabelRect) => labelRect.isCreatedByAI && labelRect.status !== LabelStatus.ACCEPTED)
                 .map((labelRect: LabelRect) => {
-                    const positionOnImage: IPoint = {x: labelRect.rect.x, y: labelRect.rect.y};
+                    const positionOnImage: IPoint = { x: labelRect.rect.x, y: labelRect.rect.y };
                     const positionOnViewPort: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(positionOnImage, editorData);
                     return <LabelControlPanel
                         position={positionOnViewPort}
@@ -199,7 +228,7 @@ class Editor extends React.Component<IProps, IState> {
             return this.props.imageData.labelPoints
                 .filter((labelPoint: LabelPoint) => labelPoint.isCreatedByAI && labelPoint.status !== LabelStatus.ACCEPTED)
                 .map((labelPoint: LabelPoint) => {
-                    const positionOnImage: IPoint = {x: labelPoint.point.x, y: labelPoint.point.y};
+                    const positionOnImage: IPoint = { x: labelPoint.point.x, y: labelPoint.point.y };
                     const positionOnViewPort: IPoint = RenderEngineUtil.transferPointFromImageToViewPortContent(positionOnImage, editorData);
                     return <LabelControlPanel
                         position={positionOnViewPort}
@@ -212,15 +241,41 @@ class Editor extends React.Component<IProps, IState> {
         else return null;
     };
 
-    private onScrollbarsUpdate = (scrollbarContent)=>{
+    private onScrollbarsUpdate = (scrollbarContent) => {
         const newViewPortContentSize = {
             width: scrollbarContent.scrollWidth,
             height: scrollbarContent.scrollHeight
         };
-        if(!isEqual(newViewPortContentSize, this.state.viewPortSize)) {
-            this.setState({viewPortSize: newViewPortContentSize})
+        if (!isEqual(newViewPortContentSize, this.state.viewPortSize)) {
+            this.setState({ viewPortSize: newViewPortContentSize })
         }
     };
+
+    private renderVideo() {
+
+        const path = "../"  + (this.props.imageData.fileData as any).path
+        return <div>
+            <video controls muted>
+                <source src={path} type="video/mp4" />
+            </video>
+            <canvas
+                className='ImageCanvas'
+                ref={ref => EditorModel.canvas = ref}
+                draggable={false}
+                onContextMenu={(event: React.MouseEvent<HTMLCanvasElement>) => event.preventDefault()}
+            />
+        </div>
+
+    }
+
+    private renderImage() {
+        return <canvas
+            className='ImageCanvas'
+            ref={ref => EditorModel.canvas = ref}
+            draggable={false}
+            onContextMenu={(event: React.MouseEvent<HTMLCanvasElement>) => event.preventDefault()}
+        />
+    }
 
     public render() {
         return (
@@ -231,19 +286,21 @@ class Editor extends React.Component<IProps, IState> {
             >
                 <Scrollbars
                     ref={ref => EditorModel.viewPortScrollbars = ref}
-                    renderTrackHorizontal={props => <div {...props} className='track-horizontal'/>}
-                    renderTrackVertical={props => <div {...props} className='track-vertical'/>}
+                    renderTrackHorizontal={props => <div {...props} className='track-horizontal' />}
+                    renderTrackVertical={props => <div {...props} className='track-vertical' />}
                     onUpdate={this.onScrollbarsUpdate}
                 >
                     <div
                         className='ViewPortContent'
                     >
-                        <canvas
-                            className='ImageCanvas'
-                            ref={ref => EditorModel.canvas = ref}
-                            draggable={false}
-                            onContextMenu={(event: React.MouseEvent<HTMLCanvasElement>) => event.preventDefault()}
-                        />
+
+                        {this.props.imageData.fileType === FileType.VIDEO ?
+                            this.renderVideo()
+                            :
+                            this.renderImage()}
+
+
+
                         {this.getOptionsPanels()}
                     </div>
                 </Scrollbars>

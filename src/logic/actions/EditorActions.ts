@@ -57,6 +57,11 @@ export class EditorActions {
         EditorActions.mountSupportRenderingEngine(activeLabelType);
     }
 
+    public static mountRenderEnginesAndHelpersForVideo() {
+        EditorModel.viewPortHelper = new ViewPortHelper();
+        EditorModel.primaryRenderingEngine = new PrimaryEditorRenderEngine(EditorModel.canvas);
+    }
+
     // =================================================================================================================
     // RENDER
     // =================================================================================================================

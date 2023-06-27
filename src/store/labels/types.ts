@@ -39,10 +39,8 @@ export type LabelName = {
     color?: string;
 }
 
-export type ImageData = {
-    id: string;
-    fileData: File;
-    loadStatus: boolean;
+export interface ImageData extends Data {
+    
     labelRects: LabelRect[];
     labelPoints: LabelPoint[];
     labelLines: LabelLine[];
@@ -60,6 +58,27 @@ export type ImageData = {
 
     // ROBOFLOW API
     isVisitedByRoboflowAPI: boolean;
+}
+
+export interface VideoData extends Data {
+    NoOfFrames: number;
+}
+
+export interface Data {
+    id: string;
+    fileData: File;
+    loadStatus: boolean;
+    fileType: FileType;
+    labelRects: LabelRect[];
+    labelPoints: LabelPoint[];
+    labelLines: LabelLine[];
+    labelPolygons: LabelPolygon[];
+    labelNameIds: string[];
+}
+
+export enum FileType {
+    IMAGE,
+    VIDEO
 }
 
 export type LabelsState = {
@@ -123,6 +142,13 @@ interface AddImageData {
     }
 }
 
+interface AddData {
+    type: typeof Action.ADD_IMAGES_DATA;
+    payload: {
+        imageData: Data[];
+    }
+}
+
 interface UpdateImageData {
     type: typeof Action.UPDATE_IMAGES_DATA;
     payload: {
@@ -148,6 +174,7 @@ export type LabelsActionTypes = UpdateActiveImageIndex
     | UpdateActiveLabelNameId
     | UpdateActiveLabelType
     | UpdateImageDataById
+    | AddData
     | AddImageData
     | UpdateImageData
     | UpdateLabelNames
