@@ -1,4 +1,4 @@
-import {ImageData} from '../store/labels/types';
+import {Data, FileType, ImageData} from '../store/labels/types';
 import { v4 as uuidv4 } from 'uuid';
 import {FileUtil} from './FileUtil';
 import {ImageRepository} from '../logic/imageRepository/ImageRepository';
@@ -7,6 +7,7 @@ export class ImageDataUtil {
     public static createImageDataFromFileData(fileData: File): ImageData {
         return {
             id: uuidv4(),
+            fileType: FileType.IMAGE,
             fileData,
             loadStatus: false,
             labelRects: [],
@@ -18,6 +19,24 @@ export class ImageDataUtil {
             isVisitedBySSDObjectDetector: false,
             isVisitedByPoseDetector: false,
             isVisitedByRoboflowAPI: false
+        }
+    }
+
+    public static createDataFromFileData(fileData: File): Data {
+        if (fileData.type === "video/mp4") {
+            return {
+                id: uuidv4(),
+                fileType: FileType.VIDEO,
+                fileData,
+                loadStatus: false,
+                labelRects: [],
+            labelPoints: [],
+            labelLines: [],
+            labelPolygons: [],
+            labelNameIds: [],
+            }
+        } else {
+            return this.createImageDataFromFileData(fileData)
         }
     }
 

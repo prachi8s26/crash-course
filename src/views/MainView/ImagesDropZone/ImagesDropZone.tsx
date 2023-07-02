@@ -2,7 +2,7 @@ import React, {PropsWithChildren} from 'react';
 import './ImagesDropZone.scss';
 import {useDropzone,DropzoneOptions} from 'react-dropzone';
 import {TextButton} from '../../Common/TextButton/TextButton';
-import {ImageData} from '../../../store/labels/types';
+import {Data, ImageData} from '../../../store/labels/types';
 import {connect} from 'react-redux';
 import {addImageData, updateActiveImageIndex} from '../../../store/labels/actionCreators';
 import {AppState} from '../../../store';
@@ -15,7 +15,7 @@ import { sortBy } from 'lodash';
 
 interface IProps {
     updateActiveImageIndexAction: (activeImageIndex: number) => any;
-    addImageDataAction: (imageData: ImageData[]) => any;
+    addImageDataAction: (imageData: Data[]) => any;
     updateProjectDataAction: (projectData: ProjectData) => any;
     updateActivePopupTypeAction: (activePopupType: PopupWindowType) => any;
     projectData: ProjectData;
@@ -24,7 +24,8 @@ interface IProps {
 const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
     const {acceptedFiles, getRootProps, getInputProps} = useDropzone({
         accept: {
-            'image/*': ['.jpeg', '.png']
+            'image/*': ['.jpeg', '.png'],
+            'video/*': ['.mp4']
         }
     } as DropzoneOptions);
 
@@ -37,7 +38,7 @@ const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
             });
             props.updateActiveImageIndexAction(0);
             props.addImageDataAction(files.map((file:File) => ImageDataUtil
-                .createImageDataFromFileData(file)));
+                .createDataFromFileData(file)));
             props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
         }
     };

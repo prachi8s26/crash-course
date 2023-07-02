@@ -1,4 +1,4 @@
-import {LabelsActionTypes, ImageData, LabelName} from './types';
+import {LabelsActionTypes, ImageData, LabelName, Data} from './types';
 import {Action} from '../Actions';
 import {LabelType} from '../../data/enums/LabelType';
 
@@ -57,7 +57,7 @@ export function updateImageDataById(id: string, newImageData: ImageData): Labels
     };
 }
 
-export function addImageData(imageData: ImageData[]): LabelsActionTypes {
+export function addImageData(imageData: Data[]): LabelsActionTypes {
     return {
         type: Action.ADD_IMAGES_DATA,
         payload: {
