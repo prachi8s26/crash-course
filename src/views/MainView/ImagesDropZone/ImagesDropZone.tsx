@@ -12,6 +12,7 @@ import {updateActivePopupType, updateProjectData} from '../../../store/general/a
 import {ProjectData} from '../../../store/general/types';
 import {ImageDataUtil} from '../../../utils/ImageDataUtil';
 import { sortBy } from 'lodash';
+import {VideoDataUtil} from '../../../utils/VideoDataUtil';
 
 interface IProps {
     updateActiveImageIndexAction: (activeImageIndex: number) => any;
@@ -22,22 +23,31 @@ interface IProps {
 }
 
 const ImagesDropZone: React.FC<IProps> = (props: PropsWithChildren<IProps>) => {
-    const {acceptedFiles, getRootProps, getInputProps} = useDropzone({
+    const { acceptedFiles, getRootProps, getInputProps } = useDropzone({
         accept: {
-            'image/*': ['.jpeg', '.png']
-        }
+            "image/*": [".jpeg", ".png"],
+            "video/*": [".mp4", ".webm"],
+        },
     } as DropzoneOptions);
 
-    const startEditor = (projectType: ProjectType) => {
+    const startEditor = async (projectType: ProjectType) => {
+        debugger
         if (acceptedFiles.length > 0) {
-            const files = sortBy(acceptedFiles, (item: File) => item.name)
+            const files = sortBy(acceptedFiles, (item: File) => item.name);
+            const updatedVideoArray = await Promise.all(
+                files.map(
+                    async (file: File) =>
+                        await VideoDataUtil.createVideoDataFromFileData(file)
+                )
+            );
+            const videoArray = updatedVideoArray
+            const imageArray = videoArray.flat()
+            props.addImageDataAction(imageArray);
             props.updateProjectDataAction({
                 ...props.projectData,
-                type: projectType
+                type: projectType,
             });
             props.updateActiveImageIndexAction(0);
-            props.addImageDataAction(files.map((file:File) => ImageDataUtil
-                .createImageDataFromFileData(file)));
             props.updateActivePopupTypeAction(PopupWindowType.INSERT_LABEL_NAMES);
         }
     };
